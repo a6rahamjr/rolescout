@@ -48,6 +48,7 @@ def test_rank_and_alert_endpoints(trained_result, tmp_path) -> None:
         health = client.get("/health")
         assert health.status_code == 200
         assert health.json()["model_loaded"] is True
+        assert health.json()["providers"] == ["stub"]
         model = client.get("/v1/model")
         assert model.status_code == 200
         assert model.json()["artifact_version"] == 2
@@ -73,6 +74,15 @@ def test_rank_and_alert_endpoints(trained_result, tmp_path) -> None:
         response = client.post("/v1/rank", json=request)
         assert response.status_code == 200
         assert response.json()["results"][0]["job"]["job_id"] == "one"
+
+        search = client.post(
+            "/v1/search",
+            json={"profile": request["profile"], "limit": 10, "min_score": 0.1},
+        )
+        assert search.status_code == 200
+        assert search.json()["sources"] == ["stub"]
+        assert search.json()["results"][0]["job"]["job_id"] == "stub-1"
+        assert "/v1/stream" in client.get("/openapi.json").json()["paths"]
 
         created = client.post(
             "/v1/alerts",

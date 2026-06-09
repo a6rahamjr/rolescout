@@ -14,6 +14,8 @@ from rolescout.utils.config import ProviderConfig
 
 
 class RemotiveProvider(JobProvider):
+    name = "remotive"
+
     def __init__(self, config: ProviderConfig, client: httpx.AsyncClient | None = None) -> None:
         self._config = config
         self._client = client
@@ -21,7 +23,7 @@ class RemotiveProvider(JobProvider):
         self._lock = asyncio.Lock()
 
     async def search(self, profile: SearchProfile, limit: int) -> list[JobPosting]:
-        key = profile.query.strip().lower()
+        key = f"{profile.query.strip().lower()}::{profile.location.strip().lower()}"
         cached = self._cache.get(key)
         if cached and time.monotonic() - cached[0] < self._config.cache_ttl_seconds:
             return cached[1][:limit]

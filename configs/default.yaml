@@ -23,8 +23,13 @@ model:
 provider:
   remotive_url: https://remotive.com/api/remote-jobs
   timeout_seconds: 15
-  cache_ttl_seconds: 21600
-  user_agent: RoleScout/1.0
+  cache_ttl_seconds: 30
+  user_agent: RoleScout/1.2
+  linkedin:
+    enabled: false
+    feed_url: ""
+    timeout_seconds: 15
+    cache_ttl_seconds: 15
 
 storage:
   database_path: rolescout.db
@@ -34,3 +39,4 @@ api:
   port: 8000
   default_result_limit: 20
   max_result_limit: 100
+  stream_poll_seconds: 30

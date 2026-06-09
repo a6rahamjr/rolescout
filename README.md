@@ -11,7 +11,8 @@ tool for ranking a CSV export.
 
 - Ranks supplied job listings by title, description, skills, location, seniority,
   workplace preference, job type, recency, and listing quality.
-- Fetches remote listings from Remotive and reranks them.
+- Fetches and reranks listings from Remotive and an optional approved LinkedIn feed.
+- Streams newly discovered ranked jobs over server-sent events.
 - Explains positive signals and likely tradeoffs for every result.
 - Filters by minimum score, excluded keywords, and excluded companies.
 - Stores alerts in SQLite with pause/resume, editing, delivery history, and check-all.
@@ -112,7 +113,73 @@ curl -X POST http://localhost:8000/v1/search \
   }'
 ```
 
-Live listings are sourced from Remotive and retain their original links and attribution.
+Results retain their original links and provider attribution. Remotive works out of the
+box; LinkedIn is included when an approved feed is configured.
+
+## Stream New Jobs
+
+`/v1/stream` keeps an HTTP connection open and emits each newly discovered ranked job once:
+
+```bash
+curl -N -G http://localhost:8000/v1/stream \
+  --data-urlencode "query=python backend engineer" \
+  --data-urlencode "skills=python,fastapi,postgresql" \
+  --data-urlencode "workplace=remote" \
+  --data-urlencode "min_score=0.4" \
+  --data-urlencode "poll_seconds=30" \
+  --data-urlencode "include_existing=false"
+```
+
+The stream uses standard server-sent events:
+
+- `ready`: confirms the active sources and polling interval.
+- `job`: contains a ranked job that has not appeared on this connection before.
+- `provider_error`: reports a recoverable provider outage without closing the stream.
+- comment heartbeats keep idle connections alive.
+
+Browser clients can connect with `EventSource`:
+
+```javascript
+const params = new URLSearchParams({
+  query: "python backend engineer",
+  workplace: "remote",
+  include_existing: "false",
+});
+const stream = new EventSource(`/v1/stream?${params}`);
+
+stream.addEventListener("job", (event) => {
+  const { result } = JSON.parse(event.data);
+  console.log(result.job.title, result.score);
+});
+```
+
+Delivery is near real time and depends on how quickly each upstream provider publishes
+and exposes new listings. RoleScout polls every 30 seconds by default and supports
+intervals from 10 to 300 seconds.
+
+## LinkedIn Feed
+
+LinkedIn's general developer APIs do not provide an unrestricted public job-search
+firehose. Its Talent APIs require approval, and the Job Posting API sends jobs to LinkedIn
+rather than searching LinkedIn jobs. RoleScout therefore connects through a configurable
+approved partner feed or organization-owned gateway instead of scraping pages.
+
+Enable it at deployment time:
+
+```env
+ROLESCOUT_LINKEDIN_ENABLED=true
+ROLESCOUT_LINKEDIN_FEED_URL=https://jobs-gateway.example.com/linkedin
+ROLESCOUT_LINKEDIN_BEARER_TOKEN=
+```
+
+The bearer value is optional and read only from the environment. The feed contract and
+accepted field aliases are documented in
+[docs/linkedin-feed.md](docs/linkedin-feed.md).
+
+Official access references:
+
+- [Getting access to LinkedIn APIs](https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access)
+- [LinkedIn Job Posting API](https://learn.microsoft.com/en-us/linkedin/talent/job-postings/api/overview)
 
 ## Alerts
 
@@ -220,6 +287,9 @@ ROLESCOUT_CONFIG=configs/default.yaml
 ROLESCOUT_MODEL_PATH=artifacts/job_ranker.joblib
 ROLESCOUT_DATABASE_PATH=rolescout.db
 ROLESCOUT_LOG_LEVEL=INFO
+ROLESCOUT_LINKEDIN_ENABLED=false
+ROLESCOUT_LINKEDIN_FEED_URL=
+ROLESCOUT_LINKEDIN_BEARER_TOKEN=
 ```
 
 ## Checks
