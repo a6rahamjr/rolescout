@@ -254,9 +254,9 @@ artifacts/job_ranker.joblib
 artifacts/metrics.json
 ```
 
-The default dataset is synthetic because the original project had no labeled relevance
-data. It is useful for checking the engineering pipeline, leakage controls, serialization,
-and ranking behavior. Its near-perfect score is not evidence of real-world quality.
+The default dataset is synthetic and is intended for checking the engineering pipeline,
+leakage controls, serialization, and ranking behavior. Its near-perfect score is not
+evidence of real-world quality.
 
 For a real deployment, replace it with consented search impressions and relevance
 feedback using the schema in `rolescout.data.loaders`.
