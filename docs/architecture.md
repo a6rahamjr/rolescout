@@ -6,12 +6,14 @@ state separate so each part can be replaced without rewriting the API.
 ## Request Flow
 
 1. The API validates a search profile and either supplied jobs or a provider-backed search.
-2. Provider responses are normalized into `JobPosting` records.
+2. Configured providers are queried concurrently and normalized into `JobPosting` records.
 3. Exact IDs and canonical title/company pairs are deduplicated.
-4. Excluded keywords and companies are removed before scoring.
-5. `PairFeatureExtractor` builds text similarity and compatibility features.
-6. `JobRanker` scores the batch and returns ranked jobs with feature contributions.
-7. Alert checks persist delivered job IDs in SQLite to avoid repeat notifications.
+4. Provider-backed searches require title and query-intent overlap.
+5. Excluded keywords and companies are removed before scoring.
+6. `PairFeatureExtractor` builds text similarity and compatibility features.
+7. `JobRanker` scores the batch and returns ranked jobs with feature contributions.
+8. Alert checks persist delivered job IDs in SQLite to avoid repeat notifications.
+9. Live streams poll the same ranking service and emit unseen results over SSE.
 
 ## Package Boundaries
 
@@ -21,6 +23,25 @@ state separate so each part can be replaced without rewriting the API.
 - `rolescout.evaluation`: classification and query-grouped ranking metrics.
 - `rolescout.inference`: service orchestration, alert state, and CSV workflows.
 - `app`: HTTP request validation and route wiring.
+
+## Providers
+
+`CompositeProvider` queries Remotive and any enabled LinkedIn feed concurrently. A
+provider failure is isolated when another source still returns results. Jobs are ordered
+by posting time and deduplicated before entering the ranker.
+
+The LinkedIn adapter targets an approved feed or organization gateway because LinkedIn
+does not expose unrestricted public job search through its general APIs. Its endpoint and
+authorization value are deployment settings; neither is returned by health checks.
+
+## Live Delivery
+
+`GET /v1/stream` returns `text/event-stream`. Each connection keeps a bounded in-memory
+set of job IDs, emits newly discovered results once, and sends heartbeats while idle.
+Provider errors are delivered as recoverable events so clients can stay connected.
+
+The stream is stateless across replicas and reconnects. Clients that require durable,
+exactly-once delivery should use saved alerts and persist their own last event ID.
 
 ## Model
 
@@ -51,5 +72,5 @@ the ranking service or HTTP contracts.
 ## Deployment
 
 The web process loads one immutable model artifact and serves requests through FastAPI.
-Alert scheduling is deliberately external: cron, a systemd timer, or a task worker can
-call the check-all endpoint. This avoids hidden background work inside API replicas.
+Live polling only runs while a client stream is connected. Alert scheduling remains
+external: cron, a systemd timer, or a task worker can call the check-all endpoint.

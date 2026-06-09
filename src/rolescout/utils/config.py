@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -35,11 +35,21 @@ class ModelConfig:
 
 
 @dataclass(frozen=True)
+class LinkedInConfig:
+    enabled: bool
+    feed_url: str
+    bearer_token: str = field(repr=False)
+    timeout_seconds: float = 15
+    cache_ttl_seconds: int = 15
+
+
+@dataclass(frozen=True)
 class ProviderConfig:
     remotive_url: str
     timeout_seconds: float
     cache_ttl_seconds: int
     user_agent: str
+    linkedin: LinkedInConfig
 
 
 @dataclass(frozen=True)
@@ -53,6 +63,7 @@ class ApiConfig:
     port: int
     default_result_limit: int
     max_result_limit: int
+    stream_poll_seconds: int
 
 
 @dataclass(frozen=True)
@@ -70,6 +81,18 @@ class AppConfig:
 def _resolve_path(value: str | Path, base_dir: Path) -> Path:
     path = Path(value)
     return path if path.is_absolute() else (base_dir / path).resolve()
+
+
+def _environment_flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be true or false")
 
 
 def load_config(path: str | Path | None = None) -> AppConfig:
@@ -90,6 +113,17 @@ def load_config(path: str | Path | None = None) -> AppConfig:
 
     artifact_value = os.getenv("ROLESCOUT_MODEL_PATH", model["artifact_path"])
     database_value = os.getenv("ROLESCOUT_DATABASE_PATH", storage["database_path"])
+    linkedin = provider.get("linkedin", {})
+    linkedin_enabled = _environment_flag(
+        "ROLESCOUT_LINKEDIN_ENABLED",
+        bool(linkedin.get("enabled", False)),
+    )
+    linkedin_feed_url = os.getenv(
+        "ROLESCOUT_LINKEDIN_FEED_URL",
+        str(linkedin.get("feed_url", "")),
+    ).strip()
+    if linkedin_enabled and not linkedin_feed_url:
+        raise ValueError("ROLESCOUT_LINKEDIN_FEED_URL is required when LinkedIn is enabled")
 
     return AppConfig(
         name=str(project["name"]),
@@ -117,6 +151,13 @@ def load_config(path: str | Path | None = None) -> AppConfig:
             timeout_seconds=float(provider["timeout_seconds"]),
             cache_ttl_seconds=int(provider["cache_ttl_seconds"]),
             user_agent=str(provider["user_agent"]),
+            linkedin=LinkedInConfig(
+                enabled=linkedin_enabled,
+                feed_url=linkedin_feed_url,
+                bearer_token=os.getenv("ROLESCOUT_LINKEDIN_BEARER_TOKEN", ""),
+                timeout_seconds=float(linkedin.get("timeout_seconds", 15)),
+                cache_ttl_seconds=int(linkedin.get("cache_ttl_seconds", 15)),
+            ),
         ),
         storage=StorageConfig(database_path=_resolve_path(database_value, repo_root)),
         api=ApiConfig(
@@ -124,5 +165,6 @@ def load_config(path: str | Path | None = None) -> AppConfig:
             port=int(api["port"]),
             default_result_limit=int(api["default_result_limit"]),
             max_result_limit=int(api["max_result_limit"]),
+            stream_poll_seconds=int(api.get("stream_poll_seconds", 30)),
         ),
     )

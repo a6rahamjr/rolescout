@@ -23,6 +23,7 @@ python -m pytest
 - Add or update tests for user-visible behavior.
 - Do not commit local databases, credentials, logs, or ad hoc job exports.
 - Preserve provider attribution and original listing links.
+- Add provider contract tests for normalization, partial outages, and deduplication.
 - Call out changes to the dataset schema or model artifact format.
 
 Synthetic benchmark results are useful for regression testing, but they must not be

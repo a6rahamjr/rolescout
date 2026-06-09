@@ -2,6 +2,15 @@
 
 All notable changes are documented here.
 
+## 1.2.0 - 2026-06-09
+
+- Added concurrent multi-provider search and cross-provider deduplication.
+- Added an optional approved LinkedIn feed adapter with environment-only authorization.
+- Added a server-sent events endpoint for near-real-time ranked job delivery.
+- Added dynamic provider health metadata and search attribution.
+- Added a query-intent gate so broad provider results do not pollute live searches.
+- Added provider normalization, outage, deduplication, and streaming tests.
+
 ## 1.1.0 - 2026-06-09
 
 - Added job and company exclusion filters.

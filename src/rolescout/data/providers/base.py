@@ -8,6 +8,14 @@ from rolescout.data.contracts import JobPosting, SearchProfile
 
 
 class JobProvider(ABC):
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__.removesuffix("Provider").lower()
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return (self.name,)
+
     @abstractmethod
     async def search(self, profile: SearchProfile, limit: int) -> list[JobPosting]:
         """Return normalized jobs for a profile."""

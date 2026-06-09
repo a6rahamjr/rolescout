@@ -1,8 +1,31 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 from rolescout.data.contracts import JobPosting, SearchProfile
+from rolescout.data.providers.base import JobProvider
+from rolescout.inference.service import RankingService
+
+
+class MixedProvider(JobProvider):
+    async def search(self, profile: SearchProfile, limit: int) -> list[JobPosting]:
+        return [
+            JobPosting(
+                job_id="relevant",
+                title="Backend Engineer",
+                company="Northstar Labs",
+                description="Build Python APIs and distributed services.",
+                url="https://example.com/relevant",
+            ),
+            JobPosting(
+                job_id="irrelevant",
+                title="Head of Sales",
+                company="Bluebird",
+                description="Lead a sales organization and work with the engineering team.",
+                url="https://example.com/irrelevant",
+            ),
+        ]
 
 
 def test_inference_ranks_matching_job_first_and_explains_score(trained_result) -> None:
@@ -102,3 +125,16 @@ def test_inference_applies_exclusions_and_score_threshold(trained_result) -> Non
 
     filtered = trained_result.model.rank(profile, jobs, min_score=1.0)
     assert filtered == []
+
+
+def test_provider_search_filters_jobs_outside_query_intent(trained_result) -> None:
+    service = RankingService(trained_result.model, MixedProvider())
+
+    ranked = asyncio.run(
+        service.search(
+            SearchProfile(query="python backend engineer"),
+            limit=10,
+        )
+    )
+
+    assert [item.job.job_id for item in ranked] == ["relevant"]
