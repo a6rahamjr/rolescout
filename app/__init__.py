@@ -1,1 +1,1 @@
-"""RoleFit API package."""
+"""RoleScout API package."""

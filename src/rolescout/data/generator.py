@@ -258,7 +258,7 @@ def generate_synthetic_dataset(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate the RoleFit synthetic dataset")
+    parser = argparse.ArgumentParser(description="Generate the RoleScout synthetic dataset")
     parser.add_argument("--config", default=None)
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--queries", type=int, default=None)

@@ -27,7 +27,7 @@ def evaluate_artifact(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate a RoleFit model artifact")
+    parser = argparse.ArgumentParser(description="Evaluate a RoleScout model artifact")
     parser.add_argument("--config", default=None)
     parser.add_argument("--dataset", type=Path, default=None)
     parser.add_argument("--model", type=Path, default=None)

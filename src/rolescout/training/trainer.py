@@ -129,7 +129,7 @@ def train_model(
 
 def main() -> None:
     configure_logging()
-    parser = argparse.ArgumentParser(description="Train the RoleFit ranker")
+    parser = argparse.ArgumentParser(description="Train the RoleScout ranker")
     parser.add_argument("--config", default=None)
     parser.add_argument("--dataset", type=Path, default=None)
     parser.add_argument("--regenerate", action="store_true")
